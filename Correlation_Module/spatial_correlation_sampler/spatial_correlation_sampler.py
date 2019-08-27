@@ -44,6 +44,60 @@ def spatial_correlation_sample(input1,
     return corr_func(input1, input2)
 
 
+class SpatialCorrelationSamplerFunctionNew():
+    
+    @staticmethod
+    def newInstance(
+                 kernel_size,
+                 patch_size,
+                 stride,
+                 padding,
+                 dilation_patch):
+        #super(SpatialCorrelationSamplerFunction, self).__init__()
+        kernel_size = _pair(kernel_size)
+        patch_size = _pair(patch_size)
+        stride = _pair(stride)
+        padding = _pair(padding)
+        dilation_patch = _pair(dilation_patch)
+
+        class RFN(Function):
+            @staticmethod
+            def forward(ctx, input1, input2):
+
+                ctx.save_for_backward(input1, input2)
+                
+                kH, kW = kernel_size
+                patchH, patchW = patch_size
+                padH, padW = padding
+                dilation_patchH, dilation_patchW = dilation_patch
+                dH, dW = stride
+
+                output = correlation.forward(input1, input2,
+                                             kH, kW, patchH, patchW,
+                                             padH, padW, dilation_patchH, dilation_patchW,
+                                             dH, dW)
+
+                return output
+
+            @staticmethod
+            def backward(ctx, grad_output):
+                input1, input2 = ctx.saved_tensors
+
+                kH, kW = kernel_size
+                patchH, patchW = patch_size
+                padH, padW = padding
+                dilation_patchH, dilation_patchW = dilation_patch
+                dH, dW = stride
+
+                grad_input1, grad_input2 = correlation.backward(input1, input2, grad_output,
+                                                                kH, kW, patchH, patchW,
+                                                                padH, padW,
+                                                                dilation_patchH, dilation_patchW,
+                                                                dH, dW)
+                return grad_input1, grad_input2
+        
+        return RFN
+
 class SpatialCorrelationSamplerFunction(Function):
     def __init__(self,
                  kernel_size,
